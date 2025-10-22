@@ -1,6 +1,3 @@
-//TODO - dodanie potencjometra cyfrowego:
-//regulacja napiecia
-
 #include <SPI.h>
 #include <LiquidCrystal.h>
 
@@ -41,28 +38,23 @@ int lastButtonState = HIGH;
 int buttonState;
 LiquidCrystal lcd(RS, EN, D4, D5, D6, D7);
 
+//przesylam dane do potencjometru cyfrowego
 void sendDigitalPotentiometerData(float voltage) {
-
   if (voltage > MAX_VOLTAGE) voltage = MAX_VOLTAGE;
   if (voltage < MIN_VOLTAGE) voltage = MIN_VOLTAGE;
-  
   byte potValue = (voltage / MAX_VOLTAGE) * 255;
-  Serial.println("digital pot dziala");
-  Serial.println(voltage);
-  Serial.println(potValue);
-  
-  //SPI.setDataMode(SPI_MODE0);
+  SPI.setDataMode(SPI_MODE0);
   digitalWrite(EN_POT, LOW);
-  SPI.transfer(0);
+  SPI.transfer(POT_INIT);
   SPI.transfer(potValue);
   digitalWrite(EN_POT, HIGH);
-  //SPI.setDataMode(SPI_MODE2);
-  
+  SPI.setDataMode(SPI_MODE2);
 }
 
+//ustawiam napiece
 void setVoltage (float val) {
-  Serial.println("digital pot");
   sendDigitalPotentiometerData(val);  
+  currentVoltage = val;
 }
 
 //przesylanie danych - ustawiam FSYNC na 0 i przesylam dane w dwoch bajtach - najpierw najstarszy potem najmlodszy
@@ -158,12 +150,14 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_1), encoderISR, FALLING);
   pinMode(FSYNC, OUTPUT);
   digitalWrite(FSYNC, HIGH);
+  pinMode(EN_POT, OUTPUT);
+  digitalWrite(EN_POT, HIGH);
   SPI.begin();
   SPI.setDataMode(SPI_MODE2);
   resetIc();
   setFrequency(gen_freq);
   setModeToSine();
-  setVoltage(0);
+  setVoltage(10);
   lcd.begin(16, 2);
   lcd.setCursor(0, 0);
   lcd.print(gen_freq);
@@ -192,7 +186,7 @@ void loop() {
     lcd.print(gen_freq);
     lcd.print(" Hz");
 
-     if(encoderDirection > 0 && currentVoltage + 0.1 < MAX_VOLTAGE) {
+    if(encoderDirection > 0 && currentVoltage + 0.1 < MAX_VOLTAGE) {
         currentVoltage = currentVoltage + 0.1;
       } else if(encoderDirection < 0 && currentVoltage - 0.1 > MIN_VOLTAGE)  {
         currentVoltage = currentVoltage - 0.1;
@@ -205,12 +199,6 @@ void loop() {
     
     encoderDirection = 0;
   }
-
-
-//  if(switchPinVal == LOW) {
-//    Serial.println("BUTTON LOW");
-//    handleModeChange();
-//  }
 
   if (switchPinVal != lastButtonState) {
     lastDebounceTime = millis();
