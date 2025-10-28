@@ -27,6 +27,7 @@
 #define D7              7 
 #define SWITCH_PIN      11
 #define EN_POT          3
+#define ARROW_CODE      62
 
 volatile int encoderDirection = 0;
 int currentMode = 0;
@@ -36,6 +37,7 @@ unsigned long lastDebounceTime = 0;
 unsigned long debounceDelay = 50; 
 int lastButtonState = HIGH;
 int buttonState;
+int currentWaveMode = 0;
 LiquidCrystal lcd(RS, EN, D4, D5, D6, D7);
 
 //przesylam dane do potencjometru cyfrowego
@@ -118,28 +120,80 @@ void encoderISR() {
 }
 
 void handleModeChange() {
+  Serial.print("handling mode change: ");
+  Serial.println(currentMode);
+
   if(currentMode == 0) {
-    currentMode++;
-    lcd.setCursor(0, 1);
-    lcd.print("                ");
-    lcd.setCursor(0, 1);
-    lcd.print("TRIANGLE");
-    setModeToTriangle();
-  } else if(currentMode == 1) {
-    currentMode++;
-    lcd.setCursor(0, 1);
-    lcd.print("                ");
-    lcd.setCursor(0, 1);
-    lcd.print("SQUARE");
-    setModeToSquare();
+    currentMode = 1;
+  } else if (currentMode == 1) {
+    currentMode = 2;
   } else {
     currentMode = 0;
-    lcd.setCursor(0, 1);
-    lcd.print("                ");
-    lcd.setCursor(0, 1);
-    lcd.print("SINE");
-    setModeToSine();
   }
+
+  if(currentMode == 0) {
+    lcd.setCursor(0, 0);
+    lcd.print((char) ARROW_CODE);
+    lcd.setCursor(8, 0);
+    lcd.print(" ");
+    lcd.setCursor(0, 1);
+    lcd.print(" ");
+  } else if (currentMode == 1) {
+    lcd.setCursor(8, 0);
+    lcd.print((char) ARROW_CODE);
+    lcd.setCursor(0, 0);
+    lcd.print(" ");
+    lcd.setCursor(0, 1);
+    lcd.print(" ");
+  } else if (currentMode == 2) {
+    lcd.setCursor(0, 1);
+    lcd.print((char) ARROW_CODE);
+    lcd.setCursor(8, 0);
+    lcd.print(" ");
+    lcd.setCursor(0, 0);
+    lcd.print(" ");
+  }
+}
+
+void handleWaveformChange() {
+  
+    if(currentWaveMode == 0) {
+      lcd.setCursor(0, 1);
+      lcd.print("                ");
+      lcd.setCursor(0, 1);
+      lcd.print("TRIANGLE");
+      setModeToTriangle();
+    } else if(currentWaveMode == 1) {
+      lcd.setCursor(0, 1);
+      lcd.print("                ");
+      lcd.setCursor(0, 1);
+      lcd.print("SQUARE");
+      setModeToSquare();
+    } else {
+      lcd.setCursor(0, 1);
+      lcd.print("                ");
+      lcd.setCursor(0, 1);
+      lcd.print("SINE");
+      setModeToSine();
+  }
+}
+
+void handleEncoderClick(int pin) {
+  
+  if (pin != lastButtonState) {
+    lastDebounceTime = millis();
+  }
+
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (pin != buttonState) {
+      buttonState = pin;
+      if (buttonState == LOW) {
+        Serial.write("encoder has been clicked");
+        handleModeChange();
+      }
+    }
+  }
+    lastButtonState = pin;
 }
 
 void setup() {
@@ -160,57 +214,53 @@ void setup() {
   setVoltage(10);
   lcd.begin(16, 2);
   lcd.setCursor(0, 0);
+  lcd.print((char) ARROW_CODE);
+  lcd.setCursor(1, 0);
   lcd.print(gen_freq);
   lcd.print(" Hz");
-  lcd.setCursor(0, 1);
+  lcd.setCursor(1, 1);
   lcd.print("SINE");
-  lcd.setCursor(8, 0);
+  lcd.setCursor(9, 0);
   lcd.print(currentVoltage);
   lcd.print(" V");
 }
 
 void loop() {
     int switchPinVal = digitalRead(SWITCH_PIN);
+
     
     if (encoderDirection != 0) {
-    if(encoderDirection > 0) {
-      gen_freq = gen_freq + 100;
-    } else if(gen_freq - 100 > 0) {
-      gen_freq = gen_freq - 100;
-    }
-    
-    setFrequency(gen_freq);
-    lcd.setCursor(0, 0);
-    lcd.print("                ");
-    lcd.setCursor(0, 0);
-    lcd.print(gen_freq);
-    lcd.print(" Hz");
+       if (currentMode == 0) {
+        if(encoderDirection > 0) {
+          gen_freq = gen_freq + 100;
+        } else if(gen_freq - 100 > 0) {
+          gen_freq = gen_freq - 100;
+        }
+        
+        setFrequency(gen_freq);
+        lcd.setCursor(0, 0);
+        lcd.print("                ");
+        lcd.setCursor(1, 0);
+        lcd.print(gen_freq);
+        lcd.print(" Hz");
+       } else if (currentMode == 1) {
 
-    if(encoderDirection > 0 && currentVoltage + 0.1 < MAX_VOLTAGE) {
-        currentVoltage = currentVoltage + 0.1;
-      } else if(encoderDirection < 0 && currentVoltage - 0.1 > MIN_VOLTAGE)  {
-        currentVoltage = currentVoltage - 0.1;
-      }
-    
-    lcd.setCursor(8, 0);
-    lcd.print(currentVoltage);
-    lcd.print(" V");
-    setVoltage(currentVoltage);
+          if(encoderDirection > 0 && currentVoltage + 0.1 < MAX_VOLTAGE) {
+              currentVoltage = currentVoltage + 0.1;
+            } else if(encoderDirection < 0 && currentVoltage - 0.1 > MIN_VOLTAGE)  {
+              currentVoltage = currentVoltage - 0.1;
+            }
+          
+          lcd.setCursor(9, 0);
+          lcd.print(currentVoltage);
+          lcd.print(" V");
+          setVoltage(currentVoltage);
+     } else if (currentMode == 2) {
+          handleModeChange();
+     }
     
     encoderDirection = 0;
   }
 
-  if (switchPinVal != lastButtonState) {
-    lastDebounceTime = millis();
-  }
-
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    if (switchPinVal != buttonState) {
-      buttonState = switchPinVal;
-      if (buttonState == LOW) {
-        handleModeChange();
-      }
-    }
-  }
-    lastButtonState = switchPinVal;
+  handleEncoderClick(switchPinVal);
 }
