@@ -139,7 +139,7 @@ void handleModeChange() {
     lcd.setCursor(0, 1);
     lcd.print(" ");
   } else if (currentMode == 1) {
-    lcd.setCursor(8, 0);
+    lcd.setCursor(9, 0);
     lcd.print((char) ARROW_CODE);
     lcd.setCursor(0, 0);
     lcd.print(" ");
@@ -148,7 +148,7 @@ void handleModeChange() {
   } else if (currentMode == 2) {
     lcd.setCursor(0, 1);
     lcd.print((char) ARROW_CODE);
-    lcd.setCursor(8, 0);
+    lcd.setCursor(9, 0);
     lcd.print(" ");
     lcd.setCursor(0, 0);
     lcd.print(" ");
@@ -156,25 +156,32 @@ void handleModeChange() {
 }
 
 void handleWaveformChange() {
-  
+
+    if(currentWaveMode > 2) {
+      currentWaveMode = 0;
+    } else if (currentWaveMode < 0) {
+      currentWaveMode = 2;
+    }
     if(currentWaveMode == 0) {
-      lcd.setCursor(0, 1);
+      lcd.setCursor(1, 1);
       lcd.print("                ");
-      lcd.setCursor(0, 1);
+      lcd.setCursor(1, 1);
       lcd.print("TRIANGLE");
       setModeToTriangle();
     } else if(currentWaveMode == 1) {
-      lcd.setCursor(0, 1);
+      lcd.setCursor(1, 1);
       lcd.print("                ");
-      lcd.setCursor(0, 1);
+      lcd.setCursor(1, 1);
       lcd.print("SQUARE");
       setModeToSquare();
-    } else {
-      lcd.setCursor(0, 1);
+    } else if(currentWaveMode == 2) {
+      lcd.setCursor(1, 1);
       lcd.print("                ");
-      lcd.setCursor(0, 1);
+      lcd.setCursor(1, 1);
       lcd.print("SINE");
       setModeToSine();
+  } else {
+    currentWaveMode = 0;
   }
 }
 
@@ -220,8 +227,8 @@ void setup() {
   lcd.print(" Hz");
   lcd.setCursor(1, 1);
   lcd.print("SINE");
-  lcd.setCursor(9, 0);
-  lcd.print(currentVoltage);
+  lcd.setCursor(10, 0);
+  lcd.print(currentVoltage, 1);
   lcd.print(" V");
 }
 
@@ -238,8 +245,8 @@ void loop() {
         }
         
         setFrequency(gen_freq);
-        lcd.setCursor(0, 0);
-        lcd.print("                ");
+        lcd.setCursor(1, 0);
+        lcd.print("       ");
         lcd.setCursor(1, 0);
         lcd.print(gen_freq);
         lcd.print(" Hz");
@@ -251,12 +258,24 @@ void loop() {
               currentVoltage = currentVoltage - 0.1;
             }
           
-          lcd.setCursor(9, 0);
-          lcd.print(currentVoltage);
+          lcd.setCursor(10, 0);
+          lcd.print(currentVoltage, 1);
           lcd.print(" V");
+
+          if(currentVoltage < 10.0) {
+            lcd.setCursor(15, 0);
+            lcd.print(" ");
+          }
           setVoltage(currentVoltage);
+          
      } else if (currentMode == 2) {
-          handleModeChange();
+      
+          if(encoderDirection > 0) {
+             currentWaveMode++;
+          } else if(encoderDirection < 0) {
+             currentWaveMode--;
+          }
+          handleWaveformChange();
      }
     
     encoderDirection = 0;
