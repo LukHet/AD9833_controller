@@ -42,9 +42,15 @@ LiquidCrystal lcd(RS, EN, D4, D5, D6, D7);
 
 //przesylam dane do potencjometru cyfrowego
 void sendDigitalPotentiometerData(float voltage) {
-  if (voltage > MAX_VOLTAGE) voltage = MAX_VOLTAGE;
-  if (voltage < MIN_VOLTAGE) voltage = MIN_VOLTAGE;
-  byte potValue = (voltage / MAX_VOLTAGE) * 255;
+  voltage = constrain(voltage, MIN_VOLTAGE, MAX_VOLTAGE);
+  float gain = 1.0;
+  if (currentWaveMode == 1) {
+    gain = 1.0 / 7.0;
+  }
+  float effectiveVoltage = voltage * gain;
+  float potFloat = (effectiveVoltage / MAX_VOLTAGE) * 255.0;
+  byte potValue = constrain((int)(potFloat + 0.5), 0, 255);
+
   SPI.setDataMode(SPI_MODE0);
   digitalWrite(EN_POT, LOW);
   SPI.transfer(POT_INIT);
@@ -52,6 +58,7 @@ void sendDigitalPotentiometerData(float voltage) {
   digitalWrite(EN_POT, HIGH);
   SPI.setDataMode(SPI_MODE2);
 }
+
 
 //ustawiam napiece
 void setVoltage (float val) {
@@ -168,18 +175,21 @@ void handleWaveformChange() {
       lcd.setCursor(1, 1);
       lcd.print("TRIANGLE");
       setModeToTriangle();
+      setVoltage(currentVoltage);
     } else if(currentWaveMode == 1) {
       lcd.setCursor(1, 1);
       lcd.print("                ");
       lcd.setCursor(1, 1);
       lcd.print("SQUARE");
       setModeToSquare();
+      setVoltage(currentVoltage);
     } else if(currentWaveMode == 2) {
       lcd.setCursor(1, 1);
       lcd.print("                ");
       lcd.setCursor(1, 1);
       lcd.print("SINE");
       setModeToSine();
+      setVoltage(currentVoltage);
   } else {
     currentWaveMode = 0;
   }
