@@ -16,7 +16,7 @@
 #define PHASE_ZERO      0xC000
 #define POT_INIT        0x11
 #define MIN_VOLTAGE     0
-#define MAX_VOLTAGE     16
+#define MAX_VOLTAGE     8
 #define ENCODER_PIN_1   1
 #define ENCODER_PIN_2   2
 #define RS              8
@@ -28,16 +28,18 @@
 #define SWITCH_PIN      11
 #define EN_POT          3
 #define ARROW_CODE      62
+#define MAX_FREQ_MUL    10000
 
 volatile int encoderDirection = 0;
 int currentMode = 0;
 float currentVoltage = 0;
-uint16_t gen_freq = 1000;
+uint32_t gen_freq = 1000;
 unsigned long lastDebounceTime = 0;
 unsigned long debounceDelay = 50; 
 int lastButtonState = HIGH;
 int buttonState;
 int currentWaveMode = 0;
+int freqMultiplier = 1;
 LiquidCrystal lcd(RS, EN, D4, D5, D6, D7);
 
 //przesylam dane do potencjometru cyfrowego
@@ -127,38 +129,33 @@ void encoderISR() {
 }
 
 void handleModeChange() {
-  Serial.print("handling mode change: ");
-  Serial.println(currentMode);
 
-  if(currentMode == 0) {
-    currentMode = 1;
-  } else if (currentMode == 1) {
-    currentMode = 2;
-  } else {
+  currentMode++;
+  if (currentMode > 3) {
     currentMode = 0;
   }
 
+  lcd.setCursor(0, 0); 
+  lcd.print(" ");
+  lcd.setCursor(0, 1); 
+  lcd.print(" ");
+  lcd.setCursor(10, 0); 
+  lcd.print(" ");
+  lcd.setCursor(9, 1);
+  lcd.print(" ");
+
   if(currentMode == 0) {
     lcd.setCursor(0, 0);
     lcd.print((char) ARROW_CODE);
-    lcd.setCursor(8, 0);
-    lcd.print(" ");
-    lcd.setCursor(0, 1);
-    lcd.print(" ");
   } else if (currentMode == 1) {
-    lcd.setCursor(9, 0);
+    lcd.setCursor(10, 0);
     lcd.print((char) ARROW_CODE);
-    lcd.setCursor(0, 0);
-    lcd.print(" ");
-    lcd.setCursor(0, 1);
-    lcd.print(" ");
   } else if (currentMode == 2) {
     lcd.setCursor(0, 1);
     lcd.print((char) ARROW_CODE);
-    lcd.setCursor(9, 0);
-    lcd.print(" ");
-    lcd.setCursor(0, 0);
-    lcd.print(" ");
+  } else if (currentMode == 3) {
+    lcd.setCursor(9, 1);
+    lcd.print((char) ARROW_CODE);
   }
 }
 
@@ -171,21 +168,21 @@ void handleWaveformChange() {
     }
     if(currentWaveMode == 0) {
       lcd.setCursor(1, 1);
-      lcd.print("                ");
+      lcd.print("        ");
       lcd.setCursor(1, 1);
-      lcd.print("TRIANGLE");
+      lcd.print("TRIAN");
       setModeToTriangle();
       setVoltage(currentVoltage);
     } else if(currentWaveMode == 1) {
       lcd.setCursor(1, 1);
-      lcd.print("                ");
+      lcd.print("        ");
       lcd.setCursor(1, 1);
       lcd.print("SQUARE");
       setModeToSquare();
       setVoltage(currentVoltage);
     } else if(currentWaveMode == 2) {
       lcd.setCursor(1, 1);
-      lcd.print("                ");
+      lcd.print("        ");
       lcd.setCursor(1, 1);
       lcd.print("SINE");
       setModeToSine();
@@ -195,23 +192,22 @@ void handleWaveformChange() {
   }
 }
 
-void handleEncoderClick(int pin) {
-  
-  if (pin != lastButtonState) {
+void handleEncoderClick(int reading) {
+  if (reading != lastButtonState) {
     lastDebounceTime = millis();
   }
 
   if ((millis() - lastDebounceTime) > debounceDelay) {
-    if (pin != buttonState) {
-      buttonState = pin;
-      if (buttonState == LOW) {
-        Serial.write("encoder has been clicked");
+    if (reading != buttonState) {
+      buttonState = reading;
+      if (buttonState == LOW){
         handleModeChange();
       }
     }
   }
-    lastButtonState = pin;
+  lastButtonState = reading;
 }
+
 
 void setup() {
   Serial.begin(9600);
@@ -228,7 +224,7 @@ void setup() {
   resetIc();
   setFrequency(gen_freq);
   setModeToSine();
-  setVoltage(10);
+  setVoltage(5);
   lcd.begin(16, 2);
   lcd.setCursor(0, 0);
   lcd.print((char) ARROW_CODE);
@@ -237,9 +233,12 @@ void setup() {
   lcd.print(" Hz");
   lcd.setCursor(1, 1);
   lcd.print("SINE");
-  lcd.setCursor(10, 0);
+  lcd.setCursor(11, 0);
   lcd.print(currentVoltage, 1);
   lcd.print(" V");
+  lcd.setCursor(10, 1);
+  lcd.print("x");
+  lcd.print(freqMultiplier);
 }
 
 void loop() {
@@ -249,14 +248,14 @@ void loop() {
     if (encoderDirection != 0) {
        if (currentMode == 0) {
         if(encoderDirection > 0) {
-          gen_freq = gen_freq + 100;
-        } else if(gen_freq - 100 > 0) {
-          gen_freq = gen_freq - 100;
+          gen_freq = gen_freq + (10 * freqMultiplier);
+        } else if(gen_freq - (10 * freqMultiplier) > 0) {
+          gen_freq = gen_freq - (10 * freqMultiplier);
         }
         
         setFrequency(gen_freq);
         lcd.setCursor(1, 0);
-        lcd.print("       ");
+        lcd.print("          ");
         lcd.setCursor(1, 0);
         lcd.print(gen_freq);
         lcd.print(" Hz");
@@ -268,12 +267,12 @@ void loop() {
               currentVoltage = currentVoltage - 0.1;
             }
           
-          lcd.setCursor(10, 0);
+          lcd.setCursor(11, 0);
           lcd.print(currentVoltage, 1);
           lcd.print(" V");
 
           if(currentVoltage < 10.0) {
-            lcd.setCursor(15, 0);
+            lcd.setCursor(16, 1);
             lcd.print(" ");
           }
           setVoltage(currentVoltage);
@@ -286,7 +285,18 @@ void loop() {
              currentWaveMode--;
           }
           handleWaveformChange();
-     }
+     } else if (currentMode == 3) {
+          if (encoderDirection > 0) {
+            if (freqMultiplier < MAX_FREQ_MUL) freqMultiplier *= 10;
+          } else {
+            if (freqMultiplier > 1) freqMultiplier /= 10;
+          }
+        
+          lcd.setCursor(10, 1);
+          lcd.print("x");
+          lcd.print(freqMultiplier);
+          lcd.print("   ");
+}
     
     encoderDirection = 0;
   }
