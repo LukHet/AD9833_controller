@@ -29,6 +29,7 @@
 #define EN_POT          3
 #define ARROW_CODE      62
 #define MAX_FREQ_MUL    10000
+#define OVERFLOW_MAX    4294868296
 
 volatile int encoderDirection = 0;
 int currentMode = 0;
@@ -39,7 +40,7 @@ unsigned long debounceDelay = 50;
 int lastButtonState = HIGH;
 int buttonState;
 int currentWaveMode = 0;
-int freqMultiplier = 1;
+uint32_t freqMultiplier = 1;
 LiquidCrystal lcd(RS, EN, D4, D5, D6, D7);
 
 //przesylam dane do potencjometru cyfrowego
@@ -84,11 +85,11 @@ void resetIc() {
 }
 
 //ustiawianie czestotliwosci - tworze slowo z czestotliwoscia przeliczona wg wzoru i dziele na mlodszy i starszy bit
-void setFrequency(unsigned long freq) {
+void setFrequency(uint32_t freq) {
   SPI.setDataMode(SPI_MODE2);
   uint16_t mask = 0x3FFF; //maska dla slowa 
   uint8_t bitsToShift = 14; //przesuwam o 14 bitow bo dane o czestotliwosci sa w 14 najmlodszych bitach
-  unsigned long FreqWord = (unsigned long)((freq * FREQ_FACTOR) / OSC_FREQ);
+  uint32_t FreqWord = (uint32_t)((freq * FREQ_FACTOR) / OSC_FREQ);
 
   uint16_t MSB = (FreqWord >> bitsToShift) & mask;
   uint16_t LSB = FreqWord & mask;
@@ -249,10 +250,10 @@ void loop() {
        if (currentMode == 0) {
         if(encoderDirection > 0) {
           gen_freq = gen_freq + (10 * freqMultiplier);
-        } else if(gen_freq - (10 * freqMultiplier) > 0) {
+        } else if(gen_freq - (10 * freqMultiplier) > 0 && gen_freq - (10 * freqMultiplier) < OVERFLOW_MAX) {
           gen_freq = gen_freq - (10 * freqMultiplier);
         }
-        
+       
         setFrequency(gen_freq);
         lcd.setCursor(1, 0);
         lcd.print("          ");
