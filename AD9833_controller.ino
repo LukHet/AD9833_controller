@@ -17,16 +17,16 @@
 #define POT_INIT        0x11
 #define MIN_VOLTAGE     0
 #define MAX_VOLTAGE     8
-#define ENCODER_PIN_1   1
-#define ENCODER_PIN_2   2
+#define ENCODER_PIN_1   2   // PD2 INT0
+#define ENCODER_PIN_2   3   // PD3 INT1
 #define RS              8
 #define EN              9
 #define D4              4
 #define D5              5
 #define D6              6
 #define D7              7 
-#define SWITCH_PIN      11
-#define EN_POT          3
+#define SWITCH_PIN      12
+#define EN_POT          1
 #define ARROW_CODE      62
 #define MAX_FREQ_MUL    10000
 #define OVERFLOW_MAX    4294868296
@@ -211,9 +211,8 @@ void handleEncoderClick(int reading) {
 
 
 void setup() {
-  Serial.begin(9600);
-  pinMode(ENCODER_PIN_1, INPUT);
-  pinMode(ENCODER_PIN_2, INPUT);
+  pinMode(ENCODER_PIN_1, INPUT_PULLUP);
+  pinMode(ENCODER_PIN_2, INPUT_PULLUP);
   pinMode(SWITCH_PIN, INPUT_PULLUP); 
   attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_1), encoderISR, FALLING);
   pinMode(FSYNC, OUTPUT);
