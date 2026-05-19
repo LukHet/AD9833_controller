@@ -25,7 +25,7 @@
 #define D5              5
 #define D6              6
 #define D7              7 
-#define SWITCH_PIN      12
+#define SWITCH_PIN      A3
 #define EN_POT          1
 #define ARROW_CODE      62
 #define MAX_FREQ_MUL    10000
@@ -119,10 +119,7 @@ void setModeToTriangle() {
 }
 
 void encoderISR() {
-  bool A = digitalRead(ENCODER_PIN_1);
-  bool B = digitalRead(ENCODER_PIN_2);
-
-  if (A == B) {
+  if ( ((PIND >> PD2) & 1) == ((PIND >> PD3) & 1) ) {
     encoderDirection = 1;
   } else {
     encoderDirection = -1;
